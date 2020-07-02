@@ -43,9 +43,7 @@ const schema = new GraphQLSchema({
                     id: { type: GraphQLID }
                 },
                 resolve: (root, args, context, info) => {
-                    console.log("resolver", args)
                     const filtered = links.filter(link => link.id === args.id)
-                    console.log("resolver", filtered)
                     return filtered[0] || null
                 },
             }
@@ -79,17 +77,6 @@ const schema = new GraphQLSchema({
 // `
 
 // // 2
-// const resolvers = {
-//     Query: {
-//         info: () => "null",
-//         feed: () => links
-//     },
-//     Link: {
-//         id: (parent) => parent.id,
-//         description: (parent) => parent.description,
-//         url: (parent) => parent.url
-//     }
-// }
 
 // const schema = makeExecutableSchema({ resolvers, typeDefs })
 
@@ -98,7 +85,36 @@ const server = new GraphQLServer({
     schema
 })
 
-server.start(() => {
-    console.log(`Server is running on http://localhost:4000`)
+server.start({ port: 4000 }, () => {
+    console.log(`Server with plain gql running on http://localhost:4000`)
+})
+
+// p2 
+
+const resolvers = {
+    Query: {
+        info: () => "null",
+        feed: () => links
+    },
+    Link: {
+        id: (parent) => parent.id,
+        description: (parent) => parent.description,
+        url: (parent) => parent.url
+    },
+    Mutation: {
+        add: () => {
+            // funktioniert, alles andere ist dein problem
+            return links[links.push({ id: "" + ++id, description: "lol", url: "unheimlich" }) - 1]
+        }
+    }
+}
+
+const server2 = new GraphQLServer({
+    typeDefs: './src/schema.graphql',
+    resolvers,
+})
+
+server2.start({ port: 4001 }, () => {
+    console.log(`Server with typeDef file running on http://localhost:4001`)
 })
 
