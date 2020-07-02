@@ -1,6 +1,6 @@
 const { GraphQLServer } = require('graphql-yoga')
 const { makeExecutableSchema } = require('graphql-tools')
-
+const { parse, GraphQLObjectType } = require('graphql')
 
 let links = [{
     id: "l1",
