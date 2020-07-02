@@ -1,50 +1,64 @@
 const { GraphQLServer } = require('graphql-yoga')
 const { makeExecutableSchema } = require('graphql-tools')
-const { parse, GraphQLObjectType, GraphQLString, GraphQLID, GraphQLSchema, GraphQLList } = require('graphql')
+const { parse, GraphQLObjectType, GraphQLString, GraphQLID, GraphQLSchema, GraphQLList, gra2 } = require('graphql')
+const { PrismaClient } = require('@prisma/client')
+const { signup, login, post } = require('./resolver/mutation')
 
-let idIterator = 0, links = [{
-    id: "" + ++idIterator,
-    url: "http://addit.com",
-    description: "full metal yolo"
-}]
+const prisma = new PrismaClient()
 
 function db() {
     return {
-        addLink: ({ url, description }) => {
-            return links[links.push({ id: "" + ++idIterator, url, description }) - 1]
+        createUser: async (data) => {
+            return await prisma.user.create({ data })
         },
-        updateLink: ({ id, description, url  }) => {
-            const link = links.filter(({ sId }) => sId === id)
-
-            if (!link[0]) {
-                throw new Error("link with id " + id + " not found")
-            }
-
-            if (description) {
-                console.log("update description of link " + id)
-                link[0].description = description
-            }
-            
-            if (url) {
-                console.log("update url of link " + id)
-                link[0].url = url
-            }
-
-            return link[0]
+        findUser: async ({ email }) => {
+            return await prisma.user.findOne({ where: { email }})
         },
-        removeLink: ({ id }) => {
-            const toDel = links.findIndex(({ id: sId }) => sId === id)
-
-            if (toDel !== -1) {
-                return links.splice(toDel, 1)[0]
-            }
-
-            return null
+        findAll: async () => {
+            const all = await prisma.link.findMany()
+            return all
+        },
+        find: async ({ id }) => await prisma.link.findOne({ where: { id: parseInt(id) } }),
+        postLink: async ({ url, description, userId }) => {
+            return await prisma.link.create({ data: { url, description, postedBy: { connect: { id: userId }} } })
+        },
+        getPostByAuthor: async ({ userId }) => await prisma.link.findMany({ where: { postedById: userId }}),
+        getPostAuthor: async ({ id }) => {
+            console.log("get post author")
+            return await prisma.link.findOne({ where: { id: parseInt(id) } }).postedBy()
+        },
+        addLink: async ({ url, description, userId }) => {
+            return await prisma.link.create({ data: { url, description, postedBy: { connect: { id: userId }} } })
+        },
+        updateLink: async ({ id, description, url  }) => {
+            return await prisma.link.update({ where: { id: parseInt(id) }, data: { url, description } })
+        },
+        removeLink: async ({ id }) => {
+            return await prisma.link.delete({ where: { id: parseInt(id) } })
         }
     }
 }
 
 // manual typing
+
+const UserType = new GraphQLObjectType({
+    name: "User",
+    fields: () => ({
+        id: {
+            type: GraphQLID
+        },
+        name: {
+            type: GraphQLString
+        },
+        email: {
+            type: GraphQLString
+        },
+        links: {
+            type: new GraphQLList(LinkType),
+            resolve: (parent, _, { db }) => db.getPostByAuthor({ userId: parent.id })
+        }
+    })
+})
 
 const LinkType = new GraphQLObjectType({
     name: "Link",
@@ -58,6 +72,22 @@ const LinkType = new GraphQLObjectType({
         },
         description: {
             type: GraphQLString
+        },
+        postedBy: {
+            type: UserType,
+            resolve: (parent, _, { db }) => db.getPostAuthor({ id: parent.id })
+        }
+    }
+})
+
+const AuthPayloadType = new GraphQLObjectType({
+    name: "AuthPayload",
+    fields: {
+        token: {
+            type: GraphQLString
+        },
+        user: {
+            type: UserType
         }
     }
 })
@@ -72,23 +102,59 @@ const schema = new GraphQLSchema({
             },
             feed: {
                 type: new GraphQLList(LinkType),
-                resolve: (root, args, context, info) => links
+                resolve: () => db().findAll()
             },
             link: {
                 type: LinkType,
                 args: {
                     id: { type: GraphQLID }
                 },
-                resolve: (root, args, context, info) => {
-                    const filtered = links.filter(link => link.id === args.id)
-                    return filtered[0] || null
-                },
+                resolve: (_, { id }) => db().find({ id })
             }
         }
     }),
     mutation: new GraphQLObjectType({
         name: "Mutation",
         fields: {
+            signup: {
+                type: AuthPayloadType,
+                args: {
+                    name: {
+                        type: GraphQLString
+                    },
+                    email: {
+                        type: GraphQLString
+                    },
+                    password: {
+                        type: GraphQLString
+                    }
+                },
+                resolve: signup
+            },
+            login: {
+                type: AuthPayloadType,
+                args: {
+                    email: {
+                        type: GraphQLString
+                    },
+                    password: {
+                        type: GraphQLString
+                    }
+                },
+                resolve: login
+            },
+            post: {
+                type: LinkType,
+                args: {
+                    url: {
+                        type: GraphQLString,
+                    },
+                    description: {
+                        type: GraphQLString,
+                    }
+                },
+                resolve: post
+            },
             add: {
                 type: LinkType,
                 args: {
@@ -126,14 +192,18 @@ const schema = new GraphQLSchema({
                         type: GraphQLString,
                     }
                 },
-                resolve: (root, args) => db().updateLink(args)
+                resolve: (_, args) => db().updateLink(args)
             }
         }
     })
 })
 
 const server = new GraphQLServer({
-    schema
+    schema,
+    context: req => ({
+        ...req,
+        db: db()
+    })
 })
 
 server.use((req, res, next) => {
@@ -150,23 +220,30 @@ server.start({ port: 4000 }, () => {
 const resolvers = {
     Query: {
         info: () => "null",
-        feed: () => links
+        feed: (_, __, { db }) => db.findAll()
+    },
+    User: {
+        links: (parent, _, { db }) => db.getPostByAuthor({ userId: parent.id })
     },
     Link: {
-        id: (parent) => parent.id,
-        description: (parent) => parent.description,
-        url: (parent) => parent.url
+        postedBy: (parent, _, { db }) => db.getPostAuthor({ id: parent.id })
     },
     Mutation: {
-        add: (_, args) => db().addLink(args),
-        delete: (_, args) => db().deleteLink(args),
-        update: (_, args) => db().updateLink(args)
+        add: (_, args, { db }) => db.addLink(args),
+        delete: (_, args, { db }) => db.removeLink(args),
+        update: (_, args, { db }) => db.updateLink(args),
+        login,
+        post,
+        signup
     }
 }
 
 const server2 = new GraphQLServer({
     typeDefs: './src/schema.graphql',
     resolvers,
+    context: {
+        db: db()
+    }
 })
 
 server2.start({ port: 4001 }, () => {

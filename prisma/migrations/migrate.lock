@@ -1,0 +1,4 @@
+# Prisma Migrate lockfile v1
+
+20200703002806-init
+20200703005734-add-user-model
