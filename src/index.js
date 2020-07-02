@@ -136,6 +136,11 @@ const server = new GraphQLServer({
     schema
 })
 
+server.use((req, res, next) => {
+    // todo check auth
+    next()
+})
+
 server.start({ port: 4000 }, () => {
     console.log(`Server with plain gql running on http://localhost:4000`)
 })
