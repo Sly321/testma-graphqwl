@@ -2,19 +2,56 @@ const { GraphQLServer } = require('graphql-yoga')
 const { makeExecutableSchema } = require('graphql-tools')
 const { parse, GraphQLObjectType, GraphQLString, GraphQLID, GraphQLSchema, GraphQLList } = require('graphql')
 
-let id = 0
-let links = [{
-    id: "" + ++id,
+let idIterator = 0, links = [{
+    id: "" + ++idIterator,
     url: "http://addit.com",
     description: "full metal yolo"
 }]
+
+function db() {
+    return {
+        addLink: ({ url, description }) => {
+            return links[links.push({ id: "" + ++idIterator, url, description }) - 1]
+        },
+        updateLink: ({ id, description, url  }) => {
+            const link = links.filter(({ sId }) => sId === id)
+
+            if (!link[0]) {
+                throw new Error("link with id " + id + " not found")
+            }
+
+            if (description) {
+                console.log("update description of link " + id)
+                link[0].description = description
+            }
+            
+            if (url) {
+                console.log("update url of link " + id)
+                link[0].url = url
+            }
+
+            return link[0]
+        },
+        removeLink: ({ id }) => {
+            const toDel = links.findIndex(({ id: sId }) => sId === id)
+
+            if (toDel !== -1) {
+                return links.splice(toDel, 1)[0]
+            }
+
+            return null
+        }
+    }
+}
+
+// manual typing
 
 const LinkType = new GraphQLObjectType({
     name: "Link",
     fields: {
         id: {
             type: GraphQLID,
-            resolve: () => "*******"
+            resolve: (root) => root.id
         },
         url: {
             type: GraphQLString
@@ -54,33 +91,47 @@ const schema = new GraphQLSchema({
         fields: {
             add: {
                 type: LinkType,
-                resolve: () => {
-                    return links.push({ id: "" + ++id, url: "leer", description: "naja" })
-                }
+                args: {
+                    url: {
+                        type: GraphQLString,
+                        description: "if you happy and you know it clap your chair"
+                    },
+                    description: {
+                        type: GraphQLString,
+                    }
+                },
+                resolve: (_, args) => db().addLink(args)
+            },
+            delete: {
+                type: LinkType,
+                args: {
+                    id: {
+                        type: GraphQLID
+                    }
+                },
+                resolve: (_, args) => db().removeLink(args)
+            },
+            update: {
+                type: LinkType,
+                args: {
+                    id: { 
+                        type: GraphQLID,
+                        description: "the id of the link that shall be updated"
+                    },
+                    url: {
+                        type: GraphQLString,
+                        description: "if you happy and you know it clap your chair"
+                    },
+                    description: {
+                        type: GraphQLString,
+                    }
+                },
+                resolve: (root, args) => db().updateLink(args)
             }
         }
     })
 })
 
-// 1
-// const typeDefs = `
-//     type Query {
-//         info: String!
-//         feed: [Link!]!
-//     }
-
-//     type Link {
-//         id: ID!
-//         description: String!
-//         url: String!
-//     }
-// `
-
-// // 2
-
-// const schema = makeExecutableSchema({ resolvers, typeDefs })
-
-// 3
 const server = new GraphQLServer({
     schema
 })
@@ -89,7 +140,7 @@ server.start({ port: 4000 }, () => {
     console.log(`Server with plain gql running on http://localhost:4000`)
 })
 
-// p2 
+// convenient
 
 const resolvers = {
     Query: {
@@ -102,10 +153,9 @@ const resolvers = {
         url: (parent) => parent.url
     },
     Mutation: {
-        add: () => {
-            // funktioniert, alles andere ist dein problem
-            return links[links.push({ id: "" + ++id, description: "lol", url: "unheimlich" }) - 1]
-        }
+        add: (_, args) => db().addLink(args),
+        delete: (_, args) => db().deleteLink(args),
+        update: (_, args) => db().updateLink(args)
     }
 }
 
