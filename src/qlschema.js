@@ -3,6 +3,9 @@ const { makeExecutableSchema } = require('graphql-tools')
 const { db } = require("./persistence/db");
 const { readFileSync } = require('fs')
 const { resolve } = require('path')
+const Subscription = require('./resolver/subscription')
+
+const { PubSub } = require('graphql-yoga')
 
 const resolvers = {
   Query: {
@@ -23,11 +26,12 @@ const resolvers = {
     post,
     signup,
   },
+  Subscription
 };
 
 const typeDefs = readFileSync(resolve(__dirname, "schema.graphql"), "utf-8")
 const schema = makeExecutableSchema({ typeDefs, resolvers })
 
 module.exports = {
-  schema
+  schema, pubsub: new PubSub
 }

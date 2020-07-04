@@ -29,3 +29,7 @@ type Mutation {
   signup(name: String!, email: String!, password: String!): AuthPayload!
   post(url: String!, description: String!): Link!
 }
+
+type Subscription {
+  newLink: Link
+}

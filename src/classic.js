@@ -6,8 +6,9 @@ const {
   GraphQLList,
   GraphQLNonNull,
 } = require("graphql");
-const { db } = require("./persistence/db");
+const { info, feed, link } = require("./resolver/query");
 const { signup, login, post } = require("./resolver/mutation");
+const { newLink } = require("./resolver/subscription");
 
 const UserType = new GraphQLObjectType({
   name: "User",
@@ -79,34 +80,19 @@ const schema = new GraphQLSchema({
     fields: {
       info: {
         type: GraphQLString,
-        resolve: () => "info",
+        resolve: info,
       },
       feed: {
         type: new GraphQLList(LinkType),
-        resolve: (_, __, context) => {
-          return context.db.findAll();
-        },
+        resolve: feed,
       },
       link: {
         type: LinkType,
         args: {
           id: { type: GraphQLID },
         },
-        resolve: (_, { id }) => db.find({ id }),
-      },
-      version: {
-        type: VersionType,
-        args: {
-          id: {
-            type: GraphQLID,
-            description: "Die ID der Version die angefragt wird.",
-          },
-        },
-        resolve: (root, args, context, info) => {
-          console.log(args);
-          return context.db.findVersionById(args);
-        },
-      },
+        resolve: link,
+      }
     },
   }),
   mutation: new GraphQLObjectType({
@@ -158,7 +144,7 @@ const schema = new GraphQLSchema({
             type: GraphQLNonNull(GraphQLID),
           },
         },
-        resolve: (_, args) => db.removeLink(args),
+        resolve: (_, args, { db }) => db.removeLink(args),
       },
       update: {
         type: LinkType,
@@ -175,10 +161,19 @@ const schema = new GraphQLSchema({
             type: GraphQLString,
           },
         },
-        resolve: (_, args) => db.updateLink(args),
+        resolve: (_, args, { db }) => db.updateLink(args),
       },
     },
   }),
+  subscription: new GraphQLObjectType({
+    name: "Subscription",
+    fields: {
+      newLink: {
+        type: LinkType,
+        ...newLink
+      }
+    }
+  })
 });
 
 module.exports = {

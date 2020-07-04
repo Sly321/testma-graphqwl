@@ -26,9 +26,13 @@ async function login(_, { password, email }, { db }) {
     }
 }
 
-async function post(_, { url, description }, { request, db }) {
+async function post(_, { url, description }, { request, db, pubsub }) {
     const userId = getUserId({ request })
-    return db.postLink({ url, description, userId })
+    const newLink = db.postLink({ url, description, userId })
+
+    pubsub.publish("NEW_LINK", newLink)
+
+    return newLink
 }
 
 module.exports = {
