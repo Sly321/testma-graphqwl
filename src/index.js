@@ -1,33 +1,22 @@
 const { GraphQLServer } = require("graphql-yoga");
-const { signup, login, post } = require("./resolver/mutation");
 const { db } = require("./persistence/db");
-require("./classic");
+const { schema: classicSchema } = require("./classic");
+const { schema: qlschema } = require("./qlschema");
 
-const resolvers = {
-  Query: {
-    info: () => "null",
-    feed: (_, __, { db }) => db.findAll(),
-  },
-  User: {
-    links: (parent, _, { db }) => db.getPostByAuthor({ userId: parent.id }),
-  },
-  Link: {
-    id: (parent, args, context, info) => parent.id,
-    postedBy: (parent, _, { db }) => db.getPostAuthor({ id: parent.id }),
-  },
-  Mutation: {
-    add: (_, args, { db }) => db.addLink(args),
-    delete: (_, args, { db }) => db.removeLink(args),
-    update: (_, args, { db }) => db.updateLink(args),
-    login,
-    post,
-    signup,
-  },
-};
+const server = new GraphQLServer({
+  schema: classicSchema,
+  context: (req) => ({
+    ...req,
+    db,
+  }),
+});
+
+server.start({ port: 4000 }, () => {
+  console.log(`Server with plain graphql running on http://localhost:4000`);
+});
 
 const server2 = new GraphQLServer({
-  typeDefs: "./src/schema.graphql",
-  resolvers,
+  schema: qlschema,
   context: {
     db,
   },

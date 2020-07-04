@@ -4,8 +4,8 @@ const {
   GraphQLID,
   GraphQLSchema,
   GraphQLList,
+  GraphQLNonNull,
 } = require("graphql");
-const { GraphQLServer } = require("graphql-yoga");
 const { db } = require("./persistence/db");
 const { signup, login, post } = require("./resolver/mutation");
 
@@ -79,7 +79,7 @@ const schema = new GraphQLSchema({
     fields: {
       info: {
         type: GraphQLString,
-        resolve: () => "yolo?",
+        resolve: () => "info",
       },
       feed: {
         type: new GraphQLList(LinkType),
@@ -116,13 +116,13 @@ const schema = new GraphQLSchema({
         type: AuthPayloadType,
         args: {
           name: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
           email: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
           password: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
         },
         resolve: signup,
@@ -131,10 +131,10 @@ const schema = new GraphQLSchema({
         type: AuthPayloadType,
         args: {
           email: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
           password: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
         },
         resolve: login,
@@ -143,32 +143,19 @@ const schema = new GraphQLSchema({
         type: LinkType,
         args: {
           url: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString)
           },
           description: {
-            type: GraphQLString,
+            type: GraphQLNonNull(GraphQLString),
           },
         },
         resolve: post,
-      },
-      add: {
-        type: LinkType,
-        args: {
-          url: {
-            type: GraphQLString,
-            description: "if you happy and you know it clap your chair",
-          },
-          description: {
-            type: GraphQLString,
-          },
-        },
-        resolve: (_, args) => db.addLink(args),
       },
       delete: {
         type: LinkType,
         args: {
           id: {
-            type: GraphQLID,
+            type: GraphQLNonNull(GraphQLID),
           },
         },
         resolve: (_, args) => db.removeLink(args),
@@ -194,19 +181,6 @@ const schema = new GraphQLSchema({
   }),
 });
 
-const server = new GraphQLServer({
-  schema,
-  context: (req) => ({
-    ...req,
-    db,
-  }),
-});
-
-server.use((req, res, next) => {
-  // todo check auth
-  next();
-});
-
-server.start({ port: 4000 }, () => {
-  console.log(`Server with plain gql running on http://localhost:4000`);
-});
+module.exports = {
+  schema
+}
