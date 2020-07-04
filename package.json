@@ -6,7 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/index.js",
-    "watch": "nodemon --watch src --ext js --exec \"node src/index.js\" "
+    "watch": "nodemon --watch src --ext js --exec \"node src/index.js\"",
+    "studio": "prisma studio --experimental",
+    "prepare:migrate": "prisma migrate save --experimental",
+    "execute:migrate": "prisma migrate up --experimental",
+    "generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
