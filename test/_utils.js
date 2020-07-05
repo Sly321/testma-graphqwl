@@ -3,6 +3,7 @@
 const {
     parse,
     validate,
+    execute
 } = require('graphql')
 
 function validateSchemaToQueryAst(query, schema) {
@@ -12,7 +13,7 @@ function validateSchemaToQueryAst(query, schema) {
 function createQuery({ type, entity, parameter, returnVal }) {
     return `
     ${type} {
-        ${entity}${parameter} ${returnVal ? `{
+        ${entity}${parameter || ""} ${returnVal ? `{
             ${returnVal}
         }` : ""}
     }`

@@ -43,6 +43,11 @@ async function remove(_, args, { db }) {
     return await db.removeLink(args)
 }
 
+async function vote(_, args, context) {
+    const userId = getUserId({ request: context.request })
+    return await context.db.vote({ linkId: args.id, userId})
+}
+
 module.exports = {
-    signup, login, post, update, remove
+    signup, login, post, update, remove, vote
 }

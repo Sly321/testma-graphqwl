@@ -1,4 +1,5 @@
 const { signup, login, post, remove, update } = require("./resolver/mutation");
+const { feed,info, link } = require('./resolver/query')
 const { makeExecutableSchema } = require('graphql-tools')
 const { db } = require("./persistence/db");
 const { readFileSync } = require('fs')
@@ -9,14 +10,13 @@ const { PubSub } = require('graphql-yoga')
 
 const resolvers = {
   Query: {
-    info: () => "null",
-    feed: (_, __, { db }) => db.findAll(),
+    info,
+    feed,
   },
   User: {
     links: (parent, _, { db }) => db.getPostByAuthor({ userId: parent.id }),
   },
   Link: {
-    id: (parent, args, context, info) => parent.id,
     postedBy: (parent, _, { db }) => db.getPostAuthor({ id: parent.id }),
   },
   Mutation: {

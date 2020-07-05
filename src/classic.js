@@ -5,10 +5,40 @@ const {
   GraphQLSchema,
   GraphQLList,
   GraphQLNonNull,
+  GraphQLEnumType,
+  GraphQLInputObjectType,
+  GraphQLInt
 } = require("graphql");
 const { info, feed, link } = require("./resolver/query");
-const { signup, login, post, update, remove } = require("./resolver/mutation");
+const { signup, login, post, update, remove, vote } = require("./resolver/mutation");
 const { newLink } = require("./resolver/subscription");
+
+const SortEnum = new GraphQLEnumType({
+  name: "Sort",
+  values: {
+    asc: {
+      value: "asc"
+    },
+    desc: {
+      value: "desc"
+    }
+  }
+})
+
+const LinkOrderByInputType = new GraphQLInputObjectType({
+  name: "LinkOrderByInput",
+  fields: {
+    url: {
+      type: SortEnum
+    },
+    description: {
+      type: SortEnum
+    },
+    createdAt: {
+      type: SortEnum
+    }
+  }
+})
 
 const UserType = new GraphQLObjectType({
   name: "User",
@@ -23,7 +53,7 @@ const UserType = new GraphQLObjectType({
       type: GraphQLString,
     },
     links: {
-      type: new GraphQLList(LinkType),
+      type: GraphQLNonNull(GraphQLList(LinkType)),
       resolve: (parent, _, { db }) => db.getPostByAuthor({ userId: parent.id }),
     },
   }),
@@ -31,7 +61,7 @@ const UserType = new GraphQLObjectType({
 
 const LinkType = new GraphQLObjectType({
   name: "Link",
-  fields: {
+  fields: () => ({
     id: {
       type: GraphQLID,
       resolve: (root) => root.id,
@@ -42,12 +72,30 @@ const LinkType = new GraphQLObjectType({
     description: {
       type: GraphQLString,
     },
+    votes: {
+      type: GraphQLNonNull(GraphQLList(VoteType)),
+      resolve: ({ id }, _, { db }) => {
+        return db.getVotesByLinkId({ id })
+      }
+    },
     postedBy: {
       type: UserType,
       resolve: (parent, _, { db }) => db.getPostAuthor({ id: parent.id }),
     },
-  },
+  }),
 });
+
+const FeedType = new GraphQLObjectType({
+  name: "Feed",
+  fields: {
+    links: {
+      type: GraphQLNonNull(GraphQLList(LinkType)) 
+    },
+    count: {
+      type: GraphQLNonNull(GraphQLInt)
+    }
+  }
+})
 
 const AuthPayloadType = new GraphQLObjectType({
   name: "AuthPayload",
@@ -61,29 +109,39 @@ const AuthPayloadType = new GraphQLObjectType({
   },
 });
 
-const VersionType = new GraphQLObjectType({
-  name: "Version",
+const VoteType = new GraphQLObjectType({
+  name: "Vote",
   fields: {
     id: {
-      type: GraphQLID,
+      type: GraphQLNonNull(GraphQLID)
     },
-    version: {
-      type: GraphQLString,
-      resolve: (root) => root.version,
+    link: {
+      type: GraphQLNonNull(LinkType),
+      resolve: (p, _, { db }) => db.findLinkById({ id: p.linkId })
     },
-  },
-});
+    user: {
+      type: GraphQLNonNull(UserType),
+      resolve: (p, _, { db }) => db.findUserById({ id: p.userId })
+    }
+  }
+})
 
 const schema = new GraphQLSchema({
   query: new GraphQLObjectType({
     name: "Query",
     fields: {
       info: {
-        type: GraphQLString,
+        type: GraphQLNonNull(GraphQLString),
         resolve: info,
       },
       feed: {
-        type: new GraphQLList(LinkType),
+        type: GraphQLNonNull(FeedType),
+        args: {
+          filter: { type: GraphQLString },
+          orderBy: { type: LinkOrderByInputType },
+          limit: { type: GraphQLInt },
+          start: { type: GraphQLInt }
+        },
         resolve: feed,
       }
     },
@@ -155,6 +213,15 @@ const schema = new GraphQLSchema({
           },
         },
         resolve: update,
+      },
+      vote: {
+        type: VoteType,
+        args: {
+          id: {
+            type: GraphQLNonNull(GraphQLID)
+          }
+        },
+        resolve: vote
       },
     },
   }),
