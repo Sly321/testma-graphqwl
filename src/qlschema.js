@@ -1,4 +1,4 @@
-const { signup, login, post } = require("./resolver/mutation");
+const { signup, login, post, remove, update } = require("./resolver/mutation");
 const { makeExecutableSchema } = require('graphql-tools')
 const { db } = require("./persistence/db");
 const { readFileSync } = require('fs')
@@ -20,8 +20,8 @@ const resolvers = {
     postedBy: (parent, _, { db }) => db.getPostAuthor({ id: parent.id }),
   },
   Mutation: {
-    delete: (_, args, { db }) => db.removeLink(args),
-    update: (_, args, { db }) => db.updateLink(args),
+    delete: remove,
+    update,
     login,
     post,
     signup,

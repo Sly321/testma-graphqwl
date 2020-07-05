@@ -7,7 +7,7 @@ const {
   GraphQLNonNull,
 } = require("graphql");
 const { info, feed, link } = require("./resolver/query");
-const { signup, login, post } = require("./resolver/mutation");
+const { signup, login, post, update, remove } = require("./resolver/mutation");
 const { newLink } = require("./resolver/subscription");
 
 const UserType = new GraphQLObjectType({
@@ -85,13 +85,6 @@ const schema = new GraphQLSchema({
       feed: {
         type: new GraphQLList(LinkType),
         resolve: feed,
-      },
-      link: {
-        type: LinkType,
-        args: {
-          id: { type: GraphQLID },
-        },
-        resolve: link,
       }
     },
   }),
@@ -144,13 +137,13 @@ const schema = new GraphQLSchema({
             type: GraphQLNonNull(GraphQLID),
           },
         },
-        resolve: (_, args, { db }) => db.removeLink(args),
+        resolve: remove,
       },
       update: {
         type: LinkType,
         args: {
           id: {
-            type: GraphQLID,
+            type: GraphQLNonNull(GraphQLID),
             description: "the id of the link that shall be updated",
           },
           url: {
@@ -161,7 +154,7 @@ const schema = new GraphQLSchema({
             type: GraphQLString,
           },
         },
-        resolve: (_, args, { db }) => db.updateLink(args),
+        resolve: update,
       },
     },
   }),

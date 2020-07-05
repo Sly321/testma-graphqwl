@@ -35,6 +35,14 @@ async function post(_, { url, description }, { request, db, pubsub }) {
     return newLink
 }
 
+async function update(_, args, { db }) {
+    return await db.updateLink(args)
+}
+
+async function remove(_, args, { db }) {
+    return await db.removeLink(args)
+}
+
 module.exports = {
-    signup, login, post
+    signup, login, post, update, remove
 }
